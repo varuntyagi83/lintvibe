@@ -1,15 +1,187 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// ─── NextAuth required models ────────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── App models ───────────────────────────────────────────────────────────────
+
+model User {
+  id            String        @id @default(cuid())
+  name          String?
+  email         String?       @unique
+  emailVerified DateTime?
+  image         String?
+  role          Role          @default(MEMBER)
+  orgId         String?
+  organization  Organization? @relation(fields: [orgId], references: [id])
+  accounts      Account[]
+  sessions      Session[]
+  scans         Scan[]
+  createdAt     DateTime      @default(now())
+}
+
+model Organization {
+  id               String           @id @default(cuid())
+  name             String
+  slug             String           @unique
+  subscriptionTier SubscriptionTier @default(FREE)
+  users            User[]
+  scans            Scan[]
+  createdAt        DateTime         @default(now())
+}
+
+model Scan {
+  id             String        @id @default(cuid())
+  orgId          String?
+  organization   Organization? @relation(fields: [orgId], references: [id])
+  name           String
+  sourceType     SourceType
+  sourceRef      String?
+  status         ScanStatus    @default(PENDING)
+  fileCount      Int           @default(0)
+  linesScanned   Int           @default(0)
+  scanDurationMs Int?
+  createdById    String?
+  createdBy      User?         @relation(fields: [createdById], references: [id])
+  findings       Finding[]
+  summary        ScanSummary?
+  createdAt      DateTime      @default(now())
+  completedAt    DateTime?
+
+  @@index([orgId, status])
+}
+
+model Finding {
+  id            String   @id @default(cuid())
+  scanId        String
+  scan          Scan     @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  filePath      String
+  lineNumber    Int?
+  lineEnd       Int?
+  codeSnippet   String?  @db.Text
+  ruleId        String
+  severity      Severity
+  category      String
+  title         String
+  description   String   @db.Text
+  aiExplanation String?  @db.Text
+  fixSuggestion String?  @db.Text
+  fixed         Boolean  @default(false)
+  falsePositive Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([scanId, severity])
+}
+
+model ScanSummary {
+  id            String   @id @default(cuid())
+  scanId        String   @unique
+  scan          Scan     @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  totalFindings Int      @default(0)
+  criticalCount Int      @default(0)
+  highCount     Int      @default(0)
+  mediumCount   Int      @default(0)
+  lowCount      Int      @default(0)
+  infoCount     Int      @default(0)
+  topCategories Json     @default("[]")
+  riskScore     Float    @default(0)
+  grade         String?
+  createdAt     DateTime @default(now())
+}
+
+model Rule {
+  id          String      @id
+  category    String
+  severity    Severity
+  title       String
+  description String      @db.Text
+  patternType PatternType
+  pattern     Json
+  languages   String[]
+  aiTools     String[]
+  fixTemplate String?     @db.Text
+  enabled     Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum SubscriptionTier {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum SourceType {
+  UPLOAD
+  GITHUB
+  PASTE
+}
+
+enum ScanStatus {
+  PENDING
+  SCANNING
+  COMPLETE
+  FAILED
+}
+
+enum Severity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFO
+}
+
+enum PatternType {
+  REGEX
+  AST
+  SEMANTIC
+  FILE
 }
