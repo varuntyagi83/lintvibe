@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { deepScanFiles } from "@/lib/ai-deepscan";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { bypassesRateLimit, hasDeepScanAccess } from "@/lib/super-admin";
 import { getGitHubToken, downloadRepoZip } from "@/lib/github";
 import { isScannablePath, type FileEntry } from "@/lib/engine/scan-files";
 import JSZip from "jszip";
@@ -45,9 +47,20 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Admin / Pro only
-  const isAdmin = (session.user as { role?: string }).role === "ADMIN";
-  if (!isAdmin) {
+  const { allowed, retryAfter } = checkRateLimit(session.user.id, 5, 60 * 60 * 1000, bypassesRateLimit(session.user.email));
+  if (!allowed) {
+    return NextResponse.json(
+      { error: `Rate limit exceeded. Try again in ${Math.ceil((retryAfter ?? 60000) / 60000)} minute(s).` },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((retryAfter ?? 60000) / 1000)) } }
+    );
+  }
+
+  // Super admin, ADMIN role, or users with explicit deep_scan exception
+  const userRole = (session.user as { role?: string }).role;
+  const userExceptions = await prisma.userException
+    .findMany({ where: { userId: session.user.id }, select: { feature: true } })
+    .then((e) => e.map((x) => x.feature));
+  if (!hasDeepScanAccess(session.user.email, userRole, userExceptions)) {
     return NextResponse.json(
       { error: "AI Deep Scan is a Pro feature. Upgrade to unlock." },
       { status: 403 }

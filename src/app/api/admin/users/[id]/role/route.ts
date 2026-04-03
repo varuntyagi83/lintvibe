@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { isSuperAdmin, SUPER_ADMIN_EMAIL } from "@/lib/super-admin";
 
 const VALID_ROLES = ["ADMIN", "MEMBER", "VIEWER"] as const;
 
@@ -19,6 +20,17 @@ export async function PATCH(
 
   if (!body.role || !VALID_ROLES.includes(body.role as typeof VALID_ROLES[number])) {
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+  }
+
+  // Protect the super admin — nobody can change their role
+  const target = await prisma.user.findUnique({ where: { id }, select: { email: true } });
+  if (target?.email === SUPER_ADMIN_EMAIL) {
+    return NextResponse.json({ error: "Cannot modify super admin role" }, { status: 403 });
+  }
+
+  // Only super admin can grant ADMIN role to others
+  if (body.role === "ADMIN" && !isSuperAdmin(session.user.email)) {
+    return NextResponse.json({ error: "Only super admin can grant ADMIN role" }, { status: 403 });
   }
 
   const updated = await prisma.user.update({

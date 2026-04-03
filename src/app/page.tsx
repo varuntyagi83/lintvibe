@@ -1,5 +1,62 @@
 import Link from "next/link";
-import { Shield, Zap, Code2, GitBranch, Lock, AlertTriangle } from "lucide-react";
+import { Shield, Zap, Code2, GitBranch, Lock, AlertTriangle, Check } from "lucide-react";
+
+const PRICING_TIERS = [
+  {
+    name: "Free",
+    price: "€0",
+    period: "/mo",
+    description: "No credit card required",
+    cta: "Get started free",
+    ctaHref: "/login",
+    ctaVariant: "outline" as const,
+    popular: false,
+    features: [
+      "10 scans/month",
+      "Up to 50 files per scan",
+      "26 detection rules",
+      "PDF export",
+      "3 AI explanations/month",
+    ],
+  },
+  {
+    name: "Pro",
+    price: "€29",
+    period: "/mo",
+    description: "Most popular for solo devs",
+    cta: "Start free trial",
+    ctaHref: "/login",
+    ctaVariant: "primary" as const,
+    popular: true,
+    features: [
+      "Unlimited scans",
+      "Up to 500 files per scan",
+      "26 detection rules + AI Deep Scan",
+      "PDF export",
+      "Unlimited AI explanations",
+      "PR webhook integration",
+      "Priority support",
+    ],
+  },
+  {
+    name: "Team",
+    price: "€99",
+    period: "/mo",
+    description: "For growing engineering teams",
+    cta: "Contact us",
+    ctaHref: "mailto:hello@vibescan.app",
+    ctaVariant: "outline" as const,
+    popular: false,
+    features: [
+      "Everything in Pro",
+      "5 team members",
+      "Shared scan history",
+      "Custom rules (coming soon)",
+      "SSO (coming soon)",
+      "Dedicated support",
+    ],
+  },
+];
 
 const VULNERABILITY_CATEGORIES = [
   { icon: Lock, label: "Hardcoded secrets", tools: "All AI tools" },
@@ -129,6 +186,73 @@ export default function LandingPage() {
                 </div>
                 <h3 className="font-semibold">{title}</h3>
                 <p className="text-zinc-400 text-sm">{desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section className="border-t border-border px-6 py-16">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-center text-2xl font-bold mb-2 text-foreground">
+            Simple, transparent pricing
+          </h2>
+          <p className="text-center text-muted-foreground text-sm mb-2">
+            Start free. Scale when you need it.
+          </p>
+          <p className="text-center text-muted-foreground text-xs mb-10">
+            Save 20% with annual billing
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {PRICING_TIERS.map((tier) => (
+              <div
+                key={tier.name}
+                className={[
+                  "relative flex flex-col rounded-xl border bg-card p-6 transition-shadow",
+                  tier.popular
+                    ? "border-red-500 shadow-[0_0_0_1px_theme(colors.red.500),0_0_20px_theme(colors.red.950)]"
+                    : "border-border",
+                ].join(" ")}
+              >
+                {tier.popular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span className="inline-flex items-center px-3 py-0.5 rounded-full bg-red-500 text-white text-xs font-semibold tracking-wide">
+                      Most popular
+                    </span>
+                  </div>
+                )}
+
+                <div className="mb-4">
+                  <p className="text-sm font-semibold text-foreground mb-1">{tier.name}</p>
+                  <div className="flex items-end gap-1 mb-1">
+                    <span className="text-4xl font-bold text-foreground">{tier.price}</span>
+                    <span className="text-muted-foreground text-sm mb-1">{tier.period}</span>
+                  </div>
+                  <p className="text-muted-foreground text-xs">{tier.description}</p>
+                </div>
+
+                <ul className="flex flex-col gap-2 mb-6 flex-1">
+                  {tier.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-2 text-sm text-foreground">
+                      <Check className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <Link
+                  href={tier.ctaHref}
+                  className={[
+                    "inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+                    tier.ctaVariant === "primary"
+                      ? "bg-primary text-primary-foreground hover:bg-primary/80"
+                      : "border border-border bg-transparent text-foreground hover:bg-accent",
+                  ].join(" ")}
+                >
+                  {tier.cta}
+                </Link>
               </div>
             ))}
           </div>

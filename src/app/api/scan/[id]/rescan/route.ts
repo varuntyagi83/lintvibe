@@ -1,57 +1,78 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { checkRateLimit } from "@/lib/rate-limit";
-import { bypassesRateLimit } from "@/lib/super-admin";
+import { getGitHubToken, downloadRepoZip } from "@/lib/github";
 import { scoreFindings } from "@/lib/engine/scorer";
 import { isScannablePath, scanFiles, type FileEntry } from "@/lib/engine/scan-files";
-import { getGitHubToken, downloadRepoZip } from "@/lib/github";
 import JSZip from "jszip";
 
 export const maxDuration = 60;
 
 const MAX_ZIP_SIZE = 100 * 1024 * 1024; // 100 MB
 
-const bodySchema = z.object({
-  owner: z.string().min(1),
-  repo: z.string().min(1),
-  branch: z.string().min(1),
-});
-
-export async function POST(req: NextRequest) {
+export async function POST(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { allowed, retryAfter } = checkRateLimit(session.user.id, 10, 60 * 60 * 1000, bypassesRateLimit(session.user.email));
-  if (!allowed) {
+  const { id } = await params;
+
+  const scan = await prisma.scan.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      name: true,
+      sourceType: true,
+      sourceRef: true,
+      status: true,
+      createdById: true,
+    },
+  });
+
+  if (!scan || scan.createdById !== session.user.id) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  if (scan.sourceType !== "GITHUB" || !scan.sourceRef) {
     return NextResponse.json(
-      { error: `Rate limit exceeded. Try again in ${Math.ceil((retryAfter ?? 60000) / 60000)} minute(s).` },
-      { status: 429, headers: { "Retry-After": String(Math.ceil((retryAfter ?? 60000) / 1000)) } }
+      { error: "Re-scan is only available for GitHub scans" },
+      { status: 400 }
     );
   }
 
-  let body: z.infer<typeof bodySchema>;
-  try {
-    body = bodySchema.parse(await req.json());
-  } catch {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  if (scan.status !== "COMPLETE" && scan.status !== "FAILED") {
+    return NextResponse.json(
+      { error: "Scan must be complete or failed to re-scan" },
+      { status: 400 }
+    );
   }
 
-  const { owner, repo, branch } = body;
+  // Parse sourceRef: https://github.com/owner/repo/tree/branch
+  const match = scan.sourceRef.match(
+    /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/tree\/(.+)$/
+  );
+  if (!match) {
+    return NextResponse.json(
+      { error: "Could not parse GitHub source reference" },
+      { status: 400 }
+    );
+  }
+  const [, owner, repo, branch] = match;
 
   const token = await getGitHubToken(session.user.id);
   if (!token) {
     return NextResponse.json({ error: "GitHub not connected" }, { status: 400 });
   }
 
-  const scan = await prisma.scan.create({
+  const newScan = await prisma.scan.create({
     data: {
-      name: `${owner}/${repo}`,
+      name: `${scan.name} (re-scan)`,
       sourceType: "GITHUB",
-      sourceRef: `https://github.com/${owner}/${repo}/tree/${branch}`,
+      sourceRef: scan.sourceRef,
       status: "SCANNING",
       createdById: session.user.id,
     },
@@ -61,15 +82,27 @@ export async function POST(req: NextRequest) {
     const buffer = await downloadRepoZip(token, owner, repo, branch);
 
     if (buffer.length > MAX_ZIP_SIZE) {
-      await prisma.scan.update({ where: { id: scan.id }, data: { status: "FAILED" } });
-      return NextResponse.json({ error: "Repository too large (max 100 MB)" }, { status: 413 });
+      await prisma.scan.update({
+        where: { id: newScan.id },
+        data: { status: "FAILED" },
+      });
+      return NextResponse.json(
+        { error: "Repository too large (max 100 MB)" },
+        { status: 413 }
+      );
     }
 
     const files = await extractRepoZip(buffer);
 
     if (files.length === 0) {
-      await prisma.scan.update({ where: { id: scan.id }, data: { status: "FAILED" } });
-      return NextResponse.json({ error: "No scannable files found in repository" }, { status: 422 });
+      await prisma.scan.update({
+        where: { id: newScan.id },
+        data: { status: "FAILED" },
+      });
+      return NextResponse.json(
+        { error: "No scannable files found in repository" },
+        { status: 422 }
+      );
     }
 
     const startedAt = Date.now();
@@ -80,7 +113,7 @@ export async function POST(req: NextRequest) {
     await prisma.$transaction([
       prisma.finding.createMany({
         data: result.findings.map((f) => ({
-          scanId: scan.id,
+          scanId: newScan.id,
           filePath: f.filePath,
           lineNumber: f.lineNumber,
           lineEnd: f.lineEnd,
@@ -95,7 +128,7 @@ export async function POST(req: NextRequest) {
       }),
       prisma.scanSummary.create({
         data: {
-          scanId: scan.id,
+          scanId: newScan.id,
           totalFindings: result.totalFindings,
           criticalCount: result.criticalCount,
           highCount: result.highCount,
@@ -108,7 +141,7 @@ export async function POST(req: NextRequest) {
         },
       }),
       prisma.scan.update({
-        where: { id: scan.id },
+        where: { id: newScan.id },
         data: {
           status: "COMPLETE",
           linesScanned,
@@ -119,10 +152,13 @@ export async function POST(req: NextRequest) {
       }),
     ]);
 
-    return NextResponse.json({ scanId: scan.id, ...result });
+    return NextResponse.json({ scanId: newScan.id });
   } catch (err) {
-    await prisma.scan.update({ where: { id: scan.id }, data: { status: "FAILED" } });
-    console.error("[scan/github]", err);
+    await prisma.scan.update({
+      where: { id: newScan.id },
+      data: { status: "FAILED" },
+    });
+    console.error("[scan/rescan]", err);
     return NextResponse.json({ error: "Scan failed" }, { status: 500 });
   }
 }
@@ -146,9 +182,10 @@ async function extractRepoZip(buffer: Buffer): Promise<FileEntry[]> {
   for (const [zipPath, zipEntry] of Object.entries(zip.files)) {
     if (zipEntry.dir) continue;
 
-    const relativePath = rootPrefix && zipPath.startsWith(rootPrefix)
-      ? zipPath.slice(rootPrefix.length)
-      : zipPath;
+    const relativePath =
+      rootPrefix && zipPath.startsWith(rootPrefix)
+        ? zipPath.slice(rootPrefix.length)
+        : zipPath;
 
     const language = isScannablePath(relativePath);
     if (!language) continue;

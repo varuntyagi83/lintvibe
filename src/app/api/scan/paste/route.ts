@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { scanCode } from "@/lib/engine";
 import type { Language } from "@/lib/engine";
 import { z } from "zod";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { bypassesRateLimit } from "@/lib/super-admin";
 
 const RequestSchema = z.object({
   code: z.string().min(1).max(500_000),
@@ -15,6 +17,14 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { allowed, retryAfter } = checkRateLimit(session.user.id, 10, 60 * 60 * 1000, bypassesRateLimit(session.user.email));
+  if (!allowed) {
+    return NextResponse.json(
+      { error: `Rate limit exceeded. Try again in ${Math.ceil((retryAfter ?? 60000) / 60000)} minute(s).` },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((retryAfter ?? 60000) / 1000)) } }
+    );
   }
 
   const body = await req.json().catch(() => null);

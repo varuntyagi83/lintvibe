@@ -4,6 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { Shield, ArrowLeft, FileCode, Download } from "lucide-react";
 import ScanResultsClient from "./ScanResultsClient";
+import RescanButton from "./RescanButton";
 import AppHeader from "@/components/AppHeader";
 
 export default async function ScanResultsPage({
@@ -106,7 +107,8 @@ export default async function ScanResultsPage({
           </div>
 
           {/* Severity counts */}
-          <div className="flex items-start gap-4">
+          <div className="flex items-start gap-2">
+            {scan.sourceType === "GITHUB" && <RescanButton scanId={id} />}
             <a
               href={`/api/scan/${id}/report`}
               download

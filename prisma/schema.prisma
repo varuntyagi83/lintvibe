@@ -58,7 +58,21 @@ model User {
   sessions       Session[]
   scans          Scan[]
   connectedRepos ConnectedRepo[]
+  exceptions     UserException[]
   createdAt      DateTime        @default(now())
+}
+
+// Per-user feature exceptions granted by super admin
+model UserException {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feature     String   // e.g. "unlimited_ai", "unlimited_scans", "deep_scan"
+  grantedBy   String   // email of super admin who granted it
+  note        String?  // optional note
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, feature])
 }
 
 model ConnectedRepo {

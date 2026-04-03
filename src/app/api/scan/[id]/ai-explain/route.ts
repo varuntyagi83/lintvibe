@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { enrichFindingsWithAI } from "@/lib/ai-explain";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { bypassesRateLimit, hasUnlimitedAI, isSuperAdmin } from "@/lib/super-admin";
 
 // Free tier: 3 AI explanations per scan. Pro/Enterprise: unlimited.
 const FREE_LIMIT = 3;
@@ -13,6 +15,14 @@ export async function POST(
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { allowed, retryAfter } = checkRateLimit(session.user.id, 20, 60 * 60 * 1000, bypassesRateLimit(session.user.email));
+  if (!allowed) {
+    return NextResponse.json(
+      { error: `Rate limit exceeded. Try again in ${Math.ceil((retryAfter ?? 60000) / 60000)} minute(s).` },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((retryAfter ?? 60000) / 1000)) } }
+    );
   }
 
   const { id: scanId } = await params;
@@ -32,8 +42,12 @@ export async function POST(
     return NextResponse.json({ error: "Scan not complete" }, { status: 400 });
   }
 
-  // Determine limit based on subscription tier (org-level in future; user role for now)
-  const isPro = (session.user as { role?: string }).role === "ADMIN"; // placeholder — wire to subscription tier
+  // Determine limit: super admin + exception holders + ADMINs get unlimited
+  const userRole = (session.user as { role?: string }).role;
+  const userExceptions = await prisma.userException
+    .findMany({ where: { userId: session.user.id }, select: { feature: true } })
+    .then((e) => e.map((x) => x.feature));
+  const isPro = hasUnlimitedAI(session.user.email, userExceptions) || userRole === "ADMIN";
   const limit = isPro ? Infinity : FREE_LIMIT;
 
   try {

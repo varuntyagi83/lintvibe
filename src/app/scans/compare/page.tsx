@@ -2,26 +2,27 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Shield, ArrowLeft, TrendingDown, TrendingUp, Minus, ChevronRight } from "lucide-react";
+import { ArrowLeft, TrendingDown, TrendingUp, Minus, ChevronRight } from "lucide-react";
 import CompareSelector from "./CompareSelector";
+import AppHeader from "@/components/AppHeader";
 
 type SearchParams = Promise<{ a?: string; b?: string }>;
 
 function GradeCircle({ grade, score }: { grade: string | null | undefined; score: number }) {
   const colors: Record<string, string> = {
-    A: "text-green-400 border-green-700 bg-green-950",
-    B: "text-blue-400 border-blue-700 bg-blue-950",
-    C: "text-yellow-400 border-yellow-700 bg-yellow-950",
-    D: "text-orange-400 border-orange-700 bg-orange-950",
-    F: "text-red-400 border-red-700 bg-red-950",
+    A: "text-green-600 dark:text-green-400 border-green-600 dark:border-green-700 bg-green-50 dark:bg-green-950",
+    B: "text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-700 bg-blue-50 dark:bg-blue-950",
+    C: "text-yellow-600 dark:text-yellow-400 border-yellow-600 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-950",
+    D: "text-orange-600 dark:text-orange-400 border-orange-600 dark:border-orange-700 bg-orange-50 dark:bg-orange-950",
+    F: "text-red-600 dark:text-red-400 border-red-600 dark:border-red-700 bg-red-50 dark:bg-red-950",
   };
   const g = grade ?? "?";
   return (
     <div className="flex flex-col items-center gap-1">
-      <span className={`inline-flex items-center justify-center w-14 h-14 rounded-full border-2 font-bold text-2xl ${colors[g] ?? "text-zinc-400 border-zinc-600 bg-zinc-800"}`}>
+      <span className={`inline-flex items-center justify-center w-14 h-14 rounded-full border-2 font-bold text-2xl ${colors[g] ?? "text-muted-foreground border-border bg-muted"}`}>
         {g}
       </span>
-      <span className="text-zinc-400 text-xs">Score {Math.round(score)}</span>
+      <span className="text-muted-foreground text-xs">Score {Math.round(score)}</span>
     </div>
   );
 }
@@ -32,6 +33,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
 
   const { a: scanAId, b: scanBId } = await searchParams;
   const userId = session.user.id;
+  const isAdmin = (session.user as { role?: string }).role === "ADMIN";
 
   // Always fetch the scan list for the selector
   const allScans = await prisma.scan.findMany({
@@ -77,32 +79,21 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
   }
 
   const SEV_COLORS: Record<string, string> = {
-    CRITICAL: "text-red-400",
-    HIGH: "text-orange-400",
-    MEDIUM: "text-yellow-400",
-    LOW: "text-blue-400",
-    INFO: "text-zinc-400",
+    CRITICAL: "text-red-600 dark:text-red-400",
+    HIGH: "text-orange-600 dark:text-orange-400",
+    MEDIUM: "text-yellow-600 dark:text-yellow-400",
+    LOW: "text-blue-600 dark:text-blue-400",
+    INFO: "text-muted-foreground",
   };
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b border-zinc-800 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Shield className="h-5 w-5 text-red-500" />
-          <span className="font-bold tracking-tight">VibeScan</span>
-        </div>
-        <div className="flex items-center gap-3 text-sm text-zinc-400">
-          <span>{session.user.email}</span>
-          <Link href="/api/auth/signout" className="hover:text-zinc-200 transition-colors">
-            Sign out
-          </Link>
-        </div>
-      </header>
+      <AppHeader email={session.user.email} isAdmin={isAdmin} nav="scans" />
 
       <main className="flex-1 px-6 py-8 max-w-5xl mx-auto w-full">
         <Link
           href="/scans"
-          className="inline-flex items-center gap-1.5 text-zinc-400 hover:text-zinc-200 text-sm mb-6 transition-colors"
+          className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm mb-6 transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           All scans
@@ -126,38 +117,38 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
         {diffData && (
           <div className="mt-8 space-y-8">
             {/* Header: A vs B */}
-            <div className="flex items-center gap-4 p-5 rounded-xl border border-zinc-800 bg-zinc-900/30">
+            <div className="flex items-center gap-4 p-5 rounded-xl border border-border bg-card">
               <div className="flex-1 text-center">
-                <p className="text-zinc-400 text-xs mb-2">Baseline (A)</p>
+                <p className="text-muted-foreground text-xs mb-2">Baseline (A)</p>
                 <GradeCircle grade={diffData.scanA.summary?.grade} score={diffData.scanA.summary?.riskScore ?? 0} />
                 <p className="mt-2 font-medium text-sm truncate">{diffData.scanA.name}</p>
-                <p className="text-zinc-500 text-xs">
+                <p className="text-muted-foreground/70 text-xs">
                   {new Date(diffData.scanA.createdAt).toLocaleDateString()}
                 </p>
               </div>
 
               <div className="flex flex-col items-center gap-1 px-4">
-                <ChevronRight className="h-5 w-5 text-zinc-600" />
+                <ChevronRight className="h-5 w-5 text-muted-foreground/50" />
                 {diffData.scoreDelta === 0 ? (
-                  <span className="flex items-center gap-1 text-zinc-400 text-sm font-medium">
+                  <span className="flex items-center gap-1 text-muted-foreground text-sm font-medium">
                     <Minus className="h-4 w-4" /> No change
                   </span>
                 ) : diffData.scoreDelta > 0 ? (
-                  <span className="flex items-center gap-1 text-red-400 text-sm font-semibold">
+                  <span className="flex items-center gap-1 text-red-600 dark:text-red-400 text-sm font-semibold">
                     <TrendingUp className="h-4 w-4" /> +{Math.round(diffData.scoreDelta)} risk
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1 text-green-400 text-sm font-semibold">
+                  <span className="flex items-center gap-1 text-green-600 dark:text-green-400 text-sm font-semibold">
                     <TrendingDown className="h-4 w-4" /> {Math.round(diffData.scoreDelta)} risk
                   </span>
                 )}
               </div>
 
               <div className="flex-1 text-center">
-                <p className="text-zinc-400 text-xs mb-2">New scan (B)</p>
+                <p className="text-muted-foreground text-xs mb-2">New scan (B)</p>
                 <GradeCircle grade={diffData.scanB.summary?.grade} score={diffData.scanB.summary?.riskScore ?? 0} />
                 <p className="mt-2 font-medium text-sm truncate">{diffData.scanB.name}</p>
-                <p className="text-zinc-500 text-xs">
+                <p className="text-muted-foreground/70 text-xs">
                   {new Date(diffData.scanB.createdAt).toLocaleDateString()}
                 </p>
               </div>
@@ -166,13 +157,13 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
             {/* Summary chips */}
             <div className="grid grid-cols-3 gap-4">
               {[
-                { label: "Fixed", count: diffData.fixed.length, color: "text-green-400", bg: "bg-green-950/20 border-green-900" },
-                { label: "New", count: diffData.newFindings.length, color: "text-red-400", bg: "bg-red-950/20 border-red-900" },
-                { label: "Persistent", count: diffData.persistent.length, color: "text-zinc-300", bg: "bg-zinc-900 border-zinc-800" },
+                { label: "Fixed", count: diffData.fixed.length, color: "text-green-600 dark:text-green-400", bg: "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900" },
+                { label: "New", count: diffData.newFindings.length, color: "text-red-600 dark:text-red-400", bg: "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900" },
+                { label: "Persistent", count: diffData.persistent.length, color: "text-foreground", bg: "bg-muted border-border" },
               ].map(({ label, count, color, bg }) => (
                 <div key={label} className={`rounded-xl border p-4 text-center ${bg}`}>
                   <p className={`text-2xl font-bold ${color}`}>{count}</p>
-                  <p className="text-zinc-500 text-xs mt-0.5">{label} findings</p>
+                  <p className="text-muted-foreground text-xs mt-0.5">{label} findings</p>
                 </div>
               ))}
             </div>
@@ -182,7 +173,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
               <FindingGroup
                 title="Fixed findings"
                 subtitle="Present in A, gone in B"
-                badge="bg-green-950 text-green-400 border-green-800"
+                badge="bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-400 border-green-300 dark:border-green-800"
                 findings={diffData.fixed}
                 sevColors={SEV_COLORS}
               />
@@ -193,7 +184,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
               <FindingGroup
                 title="New findings"
                 subtitle="Not in A, appeared in B"
-                badge="bg-red-950 text-red-400 border-red-800"
+                badge="bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 border-red-300 dark:border-red-800"
                 findings={diffData.newFindings}
                 sevColors={SEV_COLORS}
               />
@@ -204,7 +195,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
               <FindingGroup
                 title="Persistent findings"
                 subtitle="Present in both A and B"
-                badge="bg-zinc-800 text-zinc-400 border-zinc-700"
+                badge="bg-muted text-muted-foreground border-border"
                 findings={diffData.persistent}
                 sevColors={SEV_COLORS}
               />
@@ -236,23 +227,23 @@ function FindingGroup({
         <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${badge}`}>
           {findings.length}
         </span>
-        <span className="text-zinc-500 text-xs">{subtitle}</span>
+        <span className="text-muted-foreground text-xs">{subtitle}</span>
       </div>
       <div className="space-y-1">
         {findings.slice(0, 20).map((f, i) => (
-          <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900/20">
-            <span className={`text-xs font-semibold shrink-0 ${sevColors[f.severity] ?? "text-zinc-400"}`}>
+          <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-lg border border-border bg-card">
+            <span className={`text-xs font-semibold shrink-0 ${sevColors[f.severity] ?? "text-muted-foreground"}`}>
               {f.severity.charAt(0) + f.severity.slice(1).toLowerCase()}
             </span>
-            <span className="text-sm text-zinc-200 flex-1 truncate">{f.title}</span>
-            <span className="text-zinc-600 text-xs shrink-0 truncate max-w-[160px]">
+            <span className="text-sm text-foreground flex-1 truncate">{f.title}</span>
+            <span className="text-muted-foreground/60 text-xs shrink-0 truncate max-w-[160px]">
               {f.filePath === "paste" ? "paste" : f.filePath.split("/").pop()}
               {f.lineNumber ? `:${f.lineNumber}` : ""}
             </span>
           </div>
         ))}
         {findings.length > 20 && (
-          <p className="text-zinc-600 text-xs text-center pt-1">
+          <p className="text-muted-foreground/60 text-xs text-center pt-1">
             +{findings.length - 20} more
           </p>
         )}
