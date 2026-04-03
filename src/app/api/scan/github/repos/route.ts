@@ -17,7 +17,13 @@ export async function GET() {
     const repos = await listUserRepos(token);
     return NextResponse.json({ repos });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to fetch repos";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const raw = err instanceof Error ? err.message : String(err);
+    console.error("[github/repos]", raw);
+    // Expose rate-limit info (actionable) but not internal stack details
+    const isRateLimit = /rate.?limit/i.test(raw);
+    return NextResponse.json(
+      { error: isRateLimit ? "GitHub API rate limit reached. Please wait and try again." : "Failed to fetch repositories" },
+      { status: isRateLimit ? 429 : 500 }
+    );
   }
 }

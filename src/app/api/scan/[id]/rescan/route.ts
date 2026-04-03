@@ -68,9 +68,10 @@ export async function POST(
     return NextResponse.json({ error: "GitHub not connected" }, { status: 400 });
   }
 
+  const safeName = scan.name.replace(/[<>"'&\x00-\x1f]/g, "").slice(0, 96);
   const newScan = await prisma.scan.create({
     data: {
-      name: `${scan.name} (re-scan)`,
+      name: `${safeName} (re-scan)`,
       sourceType: "GITHUB",
       sourceRef: scan.sourceRef,
       status: "SCANNING",

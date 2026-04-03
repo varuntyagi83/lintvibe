@@ -181,8 +181,9 @@ export async function POST(
 
     return NextResponse.json({ found: deepFindings.length });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("[ai-deepscan]", message);
-    return NextResponse.json({ error: `Deep scan failed: ${message}` }, { status: 500 });
+    console.error("[ai-deepscan]", err instanceof Error ? err.message : err);
+    // Clean up sentinel so the user can retry after a failed deep scan
+    await prisma.finding.deleteMany({ where: { scanId, filePath: "__deep_scan_sentinel__" } }).catch(() => {});
+    return NextResponse.json({ error: "Deep scan failed" }, { status: 500 });
   }
 }

@@ -14,9 +14,9 @@ export const maxDuration = 60;
 const MAX_ZIP_SIZE = 100 * 1024 * 1024; // 100 MB
 
 const bodySchema = z.object({
-  owner: z.string().min(1),
-  repo: z.string().min(1),
-  branch: z.string().min(1),
+  owner: z.string().regex(/^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,37}[a-zA-Z0-9])?$/, "Invalid GitHub owner name"),
+  repo: z.string().regex(/^[a-zA-Z0-9\-_.]{1,100}$/, "Invalid GitHub repository name"),
+  branch: z.string().min(1).max(255),
 });
 
 export async function POST(req: NextRequest) {

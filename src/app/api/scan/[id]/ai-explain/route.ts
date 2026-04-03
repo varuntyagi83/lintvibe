@@ -54,8 +54,7 @@ export async function POST(
     const enriched = await enrichFindingsWithAI(scanId, limit);
     return NextResponse.json({ enriched, limited: !isPro && enriched >= FREE_LIMIT });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("[ai-explain]", message);
-    return NextResponse.json({ error: `AI analysis failed: ${message}` }, { status: 500 });
+    console.error("[ai-explain]", err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: "AI analysis failed" }, { status: 500 });
   }
 }

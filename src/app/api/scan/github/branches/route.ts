@@ -25,7 +25,8 @@ export async function GET(req: NextRequest) {
     const branches = await getRepoBranches(token, owner, repo);
     return NextResponse.json({ branches });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to fetch branches";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const raw = err instanceof Error ? err.message : String(err);
+    console.error("[github/branches]", raw);
+    return NextResponse.json({ error: "Failed to fetch branches" }, { status: 500 });
   }
 }
