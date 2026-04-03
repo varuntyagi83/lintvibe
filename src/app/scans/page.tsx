@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Shield, ArrowLeft, CheckCircle, Clock, AlertTriangle, GitCompareArrows } from "lucide-react";
 import { Suspense } from "react";
 import ScanFilters from "./ScanFilters";
+import DeleteScanButton from "./DeleteScanButton";
 
 function GradeBadge({ grade }: { grade: string | null | undefined }) {
   const colors: Record<string, string> = {
@@ -125,6 +126,7 @@ export default async function ScansPage({ searchParams }: { searchParams: Search
                   <th className="text-left px-4 py-3 text-zinc-400 font-medium">Findings</th>
                   <th className="text-left px-4 py-3 text-zinc-400 font-medium">Status</th>
                   <th className="text-left px-4 py-3 text-zinc-400 font-medium">Date</th>
+                  <th className="px-4 py-3" />
                 </tr>
               </thead>
               <tbody>
@@ -179,6 +181,9 @@ export default async function ScansPage({ searchParams }: { searchParams: Search
                     </td>
                     <td className="px-4 py-3 text-zinc-500 text-xs">
                       {new Date(scan.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <DeleteScanButton scanId={scan.id} />
                     </td>
                   </tr>
                 ))}

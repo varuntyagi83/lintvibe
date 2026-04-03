@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "outDir": "./dist",
+    "rootDir": "..",
+    "baseUrl": "."
+  },
+  "include": [
+    "src/**/*",
+    "../src/lib/engine/types.ts",
+    "../src/lib/engine/regex-runner.ts",
+    "../src/lib/engine/ast-runner.ts",
+    "../src/lib/engine/scorer.ts"
+  ]
+}

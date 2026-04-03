@@ -104,6 +104,9 @@ export default async function DashboardPage() {
           <Link href="/scans" className="text-zinc-400 hover:text-zinc-200 transition-colors">
             All scans
           </Link>
+          <Link href="/integrations" className="text-zinc-400 hover:text-zinc-200 transition-colors">
+            Integrations
+          </Link>
           <span className="text-zinc-400">{session.user.email}</span>
           <Link href="/api/auth/signout" className="text-zinc-500 hover:text-zinc-200 transition-colors">
             Sign out

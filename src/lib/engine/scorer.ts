@@ -3,9 +3,9 @@ import type { Finding, ScanResult } from "./types";
 const SEVERITY_WEIGHTS: Record<string, number> = {
   CRITICAL: 40,
   HIGH: 20,
-  MEDIUM: 8,
-  LOW: 3,
-  INFO: 1,
+  MEDIUM: 6,
+  LOW: 1,
+  INFO: 0,
 };
 
 export function scoreFindings(

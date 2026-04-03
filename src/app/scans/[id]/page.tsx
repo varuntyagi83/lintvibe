@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { Shield, ArrowLeft, FileCode, AlertTriangle, ChevronDown } from "lucide-react";
+import { Shield, ArrowLeft, FileCode, Download } from "lucide-react";
 import ScanResultsClient from "./ScanResultsClient";
 
 export default async function ScanResultsPage({
@@ -113,6 +113,17 @@ export default async function ScanResultsPage({
           </div>
 
           {/* Severity counts */}
+          <div className="flex items-start gap-4">
+            <a
+              href={`/api/scan/${id}/report`}
+              download
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-sm font-medium transition-colors"
+            >
+              <Download className="h-3.5 w-3.5" />
+              PDF
+            </a>
+          </div>
+
           <div className="flex gap-4">
             {[
               { label: "Critical", count: scan.summary?.criticalCount ?? 0, color: "text-red-400" },
@@ -152,8 +163,8 @@ export default async function ScanResultsPage({
                       className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-zinc-800 transition-colors group"
                     >
                       <FileCode className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
-                      <span className="text-zinc-300 text-xs truncate flex-1 group-hover:text-zinc-100">
-                        {path.split("/").pop()}
+                      <span className="text-zinc-300 text-xs truncate flex-1 group-hover:text-zinc-100" title={path}>
+                        {(() => { const p = path.split("/"); return p.length > 1 ? p.slice(-2).join("/") : path; })()}
                       </span>
                       <span
                         className={`text-xs font-semibold shrink-0 ${

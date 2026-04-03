@@ -34,10 +34,10 @@ export async function scanCode(
     // FILE rules are handled at the project level, not per-paste
   }
 
-  // Deduplicate: same rule + same line
+  // Deduplicate: same rule + same file + same line
   const seen = new Set<string>();
   const deduped = findings.filter((f) => {
-    const key = `${f.ruleId}:${f.lineNumber}`;
+    const key = `${f.ruleId}:${f.filePath}:${f.lineNumber}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

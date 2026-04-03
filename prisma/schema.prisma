@@ -46,18 +46,32 @@ model VerificationToken {
 // ─── App models ───────────────────────────────────────────────────────────────
 
 model User {
-  id            String        @id @default(cuid())
-  name          String?
-  email         String?       @unique
-  emailVerified DateTime?
-  image         String?
-  role          Role          @default(MEMBER)
-  orgId         String?
-  organization  Organization? @relation(fields: [orgId], references: [id])
-  accounts      Account[]
-  sessions      Session[]
-  scans         Scan[]
-  createdAt     DateTime      @default(now())
+  id             String          @id @default(cuid())
+  name           String?
+  email          String?         @unique
+  emailVerified  DateTime?
+  image          String?
+  role           Role            @default(MEMBER)
+  orgId          String?
+  organization   Organization?   @relation(fields: [orgId], references: [id])
+  accounts       Account[]
+  sessions       Session[]
+  scans          Scan[]
+  connectedRepos ConnectedRepo[]
+  createdAt      DateTime        @default(now())
+}
+
+model ConnectedRepo {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  owner         String
+  repo          String
+  webhookSecret String
+  failOn        String   @default("HIGH")
+  createdAt     DateTime @default(now())
+
+  @@unique([owner, repo])
 }
 
 model Organization {

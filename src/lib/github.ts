@@ -68,6 +68,105 @@ export async function getRepoBranches(
   return res.json() as Promise<GitHubBranch[]>;
 }
 
+export interface PRFile {
+  filename: string;
+  status: string; // added | modified | removed | renamed
+  raw_url: string;
+}
+
+export async function getPRFiles(
+  token: string,
+  owner: string,
+  repo: string,
+  pullNumber: number
+): Promise<PRFile[]> {
+  const res = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}/files?per_page=100`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    }
+  );
+  if (!res.ok) throw new Error(`Failed to get PR files: ${res.status}`);
+  return res.json() as Promise<PRFile[]>;
+}
+
+export async function getFileContent(
+  token: string,
+  owner: string,
+  repo: string,
+  path: string,
+  ref: string
+): Promise<string | null> {
+  const res = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${ref}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    }
+  );
+  if (!res.ok) return null;
+  const data = await res.json() as { content?: string; encoding?: string };
+  if (data.encoding !== "base64" || !data.content) return null;
+  return Buffer.from(data.content.replace(/\n/g, ""), "base64").toString("utf-8");
+}
+
+export async function postCommitStatus(
+  token: string,
+  owner: string,
+  repo: string,
+  sha: string,
+  state: "pending" | "success" | "failure",
+  description: string,
+  targetUrl?: string
+): Promise<void> {
+  await fetch(`https://api.github.com/repos/${owner}/${repo}/statuses/${sha}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      state,
+      description: description.slice(0, 140),
+      context: "VibeScan / Security",
+      ...(targetUrl ? { target_url: targetUrl } : {}),
+    }),
+  });
+}
+
+export async function postPRReview(
+  token: string,
+  owner: string,
+  repo: string,
+  pullNumber: number,
+  commitId: string,
+  body: string,
+  event: "COMMENT" | "REQUEST_CHANGES" | "APPROVE"
+): Promise<void> {
+  await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}/reviews`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ commit_id: commitId, body, event }),
+    }
+  );
+}
+
 export async function downloadRepoZip(
   token: string,
   owner: string,

@@ -1,0 +1,23 @@
+{
+  "name": "vibescan",
+  "version": "0.1.0",
+  "description": "AI-powered security scanner for vibe-coded apps — catches vulnerabilities introduced by Copilot, Cursor, Lovable, Bolt, and Claude Code",
+  "keywords": ["security", "vulnerability", "scanner", "ai", "vibe-coding", "ci"],
+  "license": "MIT",
+  "bin": {
+    "vibescan": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs --no-splitting --banner.js '#!/usr/bin/env node' --outDir dist",
+    "dev": "tsx src/index.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
