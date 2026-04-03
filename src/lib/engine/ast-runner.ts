@@ -14,6 +14,19 @@ function makeRegex(patterns: string[]): RegExp {
   return new RegExp(patterns.join("|"), "i");
 }
 
+/**
+ * Strip the *contents* of string and regex literals from a line so that
+ * pattern-matching rules don't fire on pattern strings stored as data
+ * (e.g. rule definition files, seed files containing regex strings).
+ */
+function stripLiteralContents(line: string): string {
+  return line
+    .replace(/"(?:[^"\\]|\\.)*"/g, '""')          // double-quoted strings
+    .replace(/'(?:[^'\\]|\\.)*'/g, "''")           // single-quoted strings
+    .replace(/`(?:[^`\\]|\\.)*`/g, "``")           // template literals
+    .replace(/\/(?:[^/\\\n]|\\.)+\/[gimsuy]*/g, "/re/"); // regex literals
+}
+
 /** Is this file a React client component? */
 function isClientComponent(code: string): boolean {
   return /^\s*['"]use client['"]/m.test(code);
@@ -56,7 +69,11 @@ const AST_MATCHERS: Record<
     // Service role key used outside of server-only files
     if (isTestFile(filePath)) return [];
     if (isApiRoute(filePath)) return []; // allowed in API routes
-    return matchLines(lines, /SUPABASE_SERVICE_ROLE_KEY/i);
+    // Only flag when the key name appears as actual code, not inside a
+    // string/regex literal (which would be a pattern-definition file).
+    return matchLines(lines, /SUPABASE_SERVICE_ROLE_KEY/i).filter(
+      (i) => /SUPABASE_SERVICE_ROLE_KEY/i.test(stripLiteralContents(lines[i]))
+    );
   },
 
   "env-in-client": (code, lines, filePath) => {
@@ -161,7 +178,12 @@ const AST_MATCHERS: Record<
   },
 
   "eval-usage": (code, lines) => {
-    return matchLines(lines, /\beval\s*\(|new\s+Function\s*\(/);
+    // Strip string/regex literal contents first so pattern definition files
+    // (seed.ts, rules.ts) don't produce false positives for storing "eval("
+    // as a string value in rule data.
+    return matchLines(lines, /\beval\s*\(|new\s+Function\s*\(/).filter(
+      (i) => /\beval\s*\(|new\s+Function\s*\(/.test(stripLiteralContents(lines[i]))
+    );
   },
 
   "command-injection": (code, lines) => {
@@ -255,6 +277,9 @@ export function runAstRule(
   code: string,
   filePath: string
 ): Finding[] {
+  // Respect file-level suppression comment
+  if (/vibescan-disable-file/.test(code)) return [];
+
   const matcher = AST_MATCHERS[rule.id];
   if (!matcher) return [];
 

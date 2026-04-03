@@ -26,6 +26,9 @@ export function runRegexRule(
     return [];
   }
 
+  // Respect file-level suppression comment
+  if (/vibescan-disable-file/.test(code)) return [];
+
   const lines = code.split("\n");
   const findings: Finding[] = [];
 

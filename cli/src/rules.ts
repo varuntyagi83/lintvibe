@@ -1,3 +1,4 @@
+// vibescan-disable-file — rule definition data, not application code
 import type { RawRule } from "../../src/lib/engine/types";
 
 // Bundled copy of all VibeScan detection rules — no database required.

@@ -26,6 +26,7 @@ const SKIP_DIRS = new Set([
   "venv",
   "coverage",
   ".turbo",
+  "prisma",   // seed/migration files are schema management, not application code
 ]);
 
 const MAX_FILE_SIZE = 500_000; // 500 KB per file
