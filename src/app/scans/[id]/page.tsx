@@ -22,10 +22,13 @@ export default async function ScanResultsPage({
       findings: {
         orderBy: [{ lineNumber: "asc" }],
       },
+      createdBy: { select: { role: true } },
     },
   });
 
   if (!scan || scan.createdById !== session.user.id) notFound();
+
+  const isAdmin = scan.createdBy?.role === "ADMIN";
 
   // Severity sort order
   const SEV_ORDER: Record<string, number> = {
@@ -193,6 +196,8 @@ export default async function ScanResultsPage({
                     (f.severity === "CRITICAL" || f.severity === "HIGH") &&
                     !f.aiExplanation
                 )}
+                sourceType={scan.sourceType}
+                isAdmin={isAdmin}
               />
             </div>
           </div>
