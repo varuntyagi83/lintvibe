@@ -154,7 +154,8 @@ export async function POST(
 
     return NextResponse.json({ found: deepFindings.length });
   } catch (err) {
-    console.error("[ai-deepscan]", err);
-    return NextResponse.json({ error: "Deep scan failed" }, { status: 500 });
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[ai-deepscan]", message);
+    return NextResponse.json({ error: `Deep scan failed: ${message}` }, { status: 500 });
   }
 }

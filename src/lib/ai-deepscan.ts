@@ -87,18 +87,32 @@ async function analyzeFile(filePath: string, content: string): Promise<DeepFindi
   }
 }
 
-// Only bother scanning API routes, server components, and lib files — skip UI-only files
+// Priority order: API routes first, then lib/server files, then everything else
+function deepScanPriority(filePath: string): number {
+  if (/\/api\//.test(filePath) && /route\.[jt]sx?$/.test(filePath)) return 0;
+  if (/\/lib\//.test(filePath)) return 1;
+  if (/\/actions\/|\/server\//.test(filePath)) return 2;
+  if (/\/(components|ui|styles|public|assets)\//i.test(filePath)) return 99;
+  return 3;
+}
+
 function isWorthDeepScanning(filePath: string): boolean {
   if (/\.(test|spec)\.[jt]sx?$|__tests__|fixtures?\/|mocks?\//i.test(filePath)) return false;
   if (/\/(components|ui|styles|public|assets)\//i.test(filePath)) return false;
   return true;
 }
 
-export async function deepScanFiles(files: FileEntry[]): Promise<DeepFinding[]> {
-  const targets = files.filter((f) => isWorthDeepScanning(f.path));
+// Cap at 25 files — avoids timeouts; sorted by priority so API routes always included
+const MAX_DEEP_SCAN_FILES = 25;
 
-  // Process in batches of 4 (parallel within batch)
-  const BATCH_SIZE = 4;
+export async function deepScanFiles(files: FileEntry[]): Promise<DeepFinding[]> {
+  const targets = files
+    .filter((f) => isWorthDeepScanning(f.path))
+    .sort((a, b) => deepScanPriority(a.path) - deepScanPriority(b.path))
+    .slice(0, MAX_DEEP_SCAN_FILES);
+
+  // Process in batches of 3 (parallel within batch, conservative for rate limits)
+  const BATCH_SIZE = 3;
   const allFindings: DeepFinding[] = [];
 
   for (let i = 0; i < targets.length; i += BATCH_SIZE) {
