@@ -107,7 +107,7 @@ const MAX_DEEP_SCAN_FILES = 25;
 
 export async function deepScanFiles(files: FileEntry[]): Promise<DeepFinding[]> {
   const targets = files
-    .filter((f) => isWorthDeepScanning(f.path))
+    .filter((f) => f.language !== "json" && isWorthDeepScanning(f.path))
     .sort((a, b) => deepScanPriority(a.path) - deepScanPriority(b.path))
     .slice(0, MAX_DEEP_SCAN_FILES);
 

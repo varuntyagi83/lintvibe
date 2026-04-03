@@ -521,6 +521,142 @@ function detectSecretsInClientImports(files: FileEntry[]): Finding[] {
   return findings;
 }
 
+// ─── Rule 6: Missing CAPTCHA on authentication pages ─────────────────────────
+
+function detectMissingCaptcha(files: FileEntry[]): Finding[] {
+  // Check if any CAPTCHA library is imported anywhere in the project
+  const captchaRe =
+    /hcaptcha|@hcaptcha|recaptcha|react-google-recaptcha|turnstile|@cloudflare\/turnstile|react-turnstile|react-simple-captcha|friendly-captcha/i;
+  const hasCaptcha = files.some((f) => captchaRe.test(f.content));
+  if (hasCaptcha) return [];
+
+  // Find auth-related page or route files
+  const authPathRe =
+    /\/(login|signin|sign-in|register|signup|sign-up|forgot-password|reset-password|auth)\//i;
+  const authFiles = files.filter(
+    (f) =>
+      authPathRe.test(f.path) &&
+      /(?:page|route)\.[jt]sx?$/.test(f.path)
+  );
+  if (authFiles.length === 0) return [];
+
+  const examplePaths = authFiles
+    .slice(0, 3)
+    .map((f) => f.path)
+    .join(", ");
+
+  return [
+    {
+      ruleId: "graph-missing-captcha",
+      filePath: authFiles[0].path,
+      lineNumber: 1,
+      lineEnd: 1,
+      codeSnippet: `// No CAPTCHA found across ${authFiles.length} auth page(s)`,
+      severity: "MEDIUM",
+      category: "authentication",
+      title: "No CAPTCHA protection on authentication forms",
+      description:
+        `Auth pages detected (${examplePaths}) but no CAPTCHA library ` +
+        `(hCaptcha, reCAPTCHA v3, Cloudflare Turnstile) was found anywhere in the codebase. ` +
+        `Without CAPTCHA, login and signup forms are exposed to credential stuffing, brute-force password spraying, ` +
+        `and bot-driven account creation at scale. AI tools never add CAPTCHA unless explicitly instructed.`,
+      aiTools: ["cursor", "copilot", "v0", "bolt", "lovable", "replit"],
+      fixTemplate:
+        `# Install a CAPTCHA library (Cloudflare Turnstile is recommended — free, privacy-friendly):\nnpm install react-turnstile\n\n` +
+        `# Add to your login/signup form:\nimport Turnstile from 'react-turnstile';\n` +
+        `// <Turnstile siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} onSuccess={setToken} />\n` +
+        `# Verify on the server:\n// await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { ... })`,
+    },
+  ];
+}
+
+// ─── Rule 7: Missing security headers in next.config ─────────────────────────
+
+function detectMissingSecurityHeaders(files: FileEntry[]): Finding[] {
+  const configFile = files.find((f) =>
+    /(?:^|\/)next\.config\.[mc]?[jt]s$/.test(f.path)
+  );
+  if (!configFile) return [];
+
+  const code = configFile.content;
+
+  // If no headers() function at all, everything is missing
+  const hasHeadersFn =
+    /\basync\s+headers\s*\(|headers\s*:\s*(?:async\s+)?\(\s*\)\s*=>/.test(
+      code
+    );
+
+  if (!hasHeadersFn) {
+    return [
+      {
+        ruleId: "graph-missing-security-headers",
+        filePath: configFile.path,
+        lineNumber: 1,
+        lineEnd: 1,
+        codeSnippet: `// next.config: no security headers() configured`,
+        severity: "MEDIUM",
+        category: "configuration",
+        title: "Security headers not configured in next.config",
+        description:
+          `\`next.config\` does not define a \`headers()\` function. ` +
+          `Critical browser security headers (Content-Security-Policy, X-Frame-Options, ` +
+          `X-Content-Type-Options, Strict-Transport-Security, Permissions-Policy) are never sent, ` +
+          `leaving the app exposed to clickjacking, MIME sniffing attacks, protocol downgrade, and XSS. ` +
+          `This is consistently missed by AI-generated projects.`,
+        aiTools: ["cursor", "copilot", "v0", "bolt", "lovable", "replit"],
+        fixTemplate:
+          `// Add to next.config.js:\nasync headers() {\n  return [{\n    source: '/(.*)',\n    headers: [\n` +
+          `      { key: 'X-Frame-Options', value: 'DENY' },\n` +
+          `      { key: 'X-Content-Type-Options', value: 'nosniff' },\n` +
+          `      { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },\n` +
+          `      { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },\n` +
+          `      { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },\n` +
+          `      { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline'" },\n` +
+          `    ],\n  }];\n}`,
+      },
+    ];
+  }
+
+  // headers() exists — check for specific missing headers
+  const headerChecks: { header: string; pattern: RegExp }[] = [
+    { header: "X-Frame-Options", pattern: /X-Frame-Options/i },
+    { header: "X-Content-Type-Options", pattern: /X-Content-Type-Options/i },
+    {
+      header: "Strict-Transport-Security",
+      pattern: /Strict-Transport-Security/i,
+    },
+    { header: "Permissions-Policy", pattern: /Permissions-Policy/i },
+    { header: "Content-Security-Policy", pattern: /Content-Security-Policy/i },
+  ];
+
+  const missingHeaders = headerChecks
+    .filter(({ pattern }) => !pattern.test(code))
+    .map(({ header }) => header);
+
+  if (missingHeaders.length === 0) return [];
+
+  return [
+    {
+      ruleId: "graph-incomplete-security-headers",
+      filePath: configFile.path,
+      lineNumber: 1,
+      lineEnd: 1,
+      codeSnippet: `// Missing: ${missingHeaders.join(", ")}`,
+      severity: "LOW",
+      category: "configuration",
+      title: `Incomplete security headers: missing ${missingHeaders.slice(0, 3).join(", ")}`,
+      description:
+        `\`next.config\` has a \`headers()\` function but is missing: ${missingHeaders.join(", ")}. ` +
+        `These headers defend against clickjacking (X-Frame-Options), MIME-type sniffing (X-Content-Type-Options), ` +
+        `protocol downgrade attacks (HSTS), and capability abuse (Permissions-Policy).`,
+      aiTools: [],
+      fixTemplate: missingHeaders
+        .map((h) => `{ key: '${h}', value: '...' }`)
+        .join(",\n"),
+    },
+  ];
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
@@ -541,6 +677,8 @@ export function analyzeProjectGraph(files: FileEntry[]): Finding[] {
     ...detectMiddlewareCoverageGaps(routes, middleware),
     ...detectMassAssignment(routes),
     ...detectSecretsInClientImports(files),
+    ...detectMissingCaptcha(files),
+    ...detectMissingSecurityHeaders(files),
   ];
 
   // Deduplicate

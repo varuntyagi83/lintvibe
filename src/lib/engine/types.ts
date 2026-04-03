@@ -1,4 +1,4 @@
-export type Language = "javascript" | "typescript" | "python";
+export type Language = "javascript" | "typescript" | "python" | "json";
 
 export interface RawRule {
   id: string;

@@ -1,5 +1,6 @@
 import { scanCode } from "./index";
 import { analyzeProjectGraph } from "./project-graph";
+import { scanDependencies } from "./dep-scanner";
 import type { Finding, Language } from "./types";
 
 const SCANNABLE_EXTENSIONS: Record<string, Language> = {
@@ -45,6 +46,10 @@ export function isScannablePath(filePath: string): Language | null {
   // Skip any path that contains a blocked directory
   if (parts.some((p) => SKIP_DIRS.has(p))) return null;
 
+  // Special case: include package.json for dependency vulnerability scanning
+  const filename = parts[parts.length - 1];
+  if (filename === "package.json") return "json";
+
   const ext = "." + normalized.split(".").pop()?.toLowerCase();
   return SCANNABLE_EXTENSIONS[ext] ?? null;
 }
@@ -81,6 +86,9 @@ export async function scanFiles(
   let linesScanned = 0;
 
   for (const file of limited) {
+    // JSON files (package.json) are handled by the dependency scanner below
+    if (file.language === "json") continue;
+
     const content = file.content.slice(0, MAX_FILE_SIZE);
     const result = await scanCode(content, file.language, file.path);
     allFindings.push(...result.findings);
@@ -104,10 +112,14 @@ export async function scanFiles(
 
   // ── Project-graph analysis ──────────────────────────────────────────────────
   // Cross-file semantic rules: IDOR, server-action auth bypass, middleware gaps,
-  // mass assignment, secret leaks via client imports.
-  // These are impossible to detect with per-file pattern matching alone.
+  // mass assignment, secret leaks via client imports, CAPTCHA, security headers.
   const graphFindings = analyzeProjectGraph(limited);
   allFindings.push(...graphFindings);
+
+  // ── Dependency vulnerability scan ───────────────────────────────────────────
+  // Parse package.json and flag packages with known CVEs.
+  const depFindings = scanDependencies(limited);
+  allFindings.push(...depFindings);
 
   return { allFindings, linesScanned, fileCount: limited.length };
 }
