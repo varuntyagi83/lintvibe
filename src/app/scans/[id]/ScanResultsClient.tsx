@@ -244,8 +244,15 @@ export default function ScanResultsClient({
     setDeepStatus(null);
     startDeepScan(async () => {
       const res = await fetch(`/api/scan/${scanId}/ai-deepscan`, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) { setDeepStatus(data.error ?? "Deep scan failed"); return; }
+      let data: Record<string, unknown> = {};
+      try {
+        const text = await res.text();
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        setDeepStatus(`Deep scan failed: server returned an unexpected response (${res.status} ${res.statusText}). The scan may have timed out — try again.`);
+        return;
+      }
+      if (!res.ok) { setDeepStatus((data.error as string) ?? "Deep scan failed"); return; }
 
       const updated = await fetch(`/api/scan/${scanId}/findings`);
       if (updated.ok) {

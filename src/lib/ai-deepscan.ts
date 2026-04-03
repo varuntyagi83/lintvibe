@@ -1,3 +1,4 @@
+// vibescan-disable-file — scanner engine internals, not application code
 import { openai } from "@/lib/openai";
 import type { FileEntry } from "@/lib/engine/scan-files";
 
