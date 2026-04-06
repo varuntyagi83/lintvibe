@@ -1,4 +1,4 @@
-import { scanCode } from "./index";
+import { fetchRules, scanCodeWithRules } from "./index";
 import { analyzeProjectGraph } from "./project-graph";
 import { scanDependencies } from "./dep-scanner";
 import { getRiskCategories } from "./risk-categories";
@@ -80,6 +80,9 @@ export async function scanFiles(
 }> {
   const limited = files.slice(0, MAX_FILES);
 
+  // Fetch rules once for the entire scan — avoids N+1 DB queries per file
+  const rules = await fetchRules();
+
   // Project-level context: does this codebase protect routes via middleware?
   const hasMiddlewareAuth = detectMiddlewareAuth(limited);
 
@@ -91,7 +94,7 @@ export async function scanFiles(
     if (file.language === "json") continue;
 
     const content = file.content.slice(0, MAX_FILE_SIZE);
-    const result = await scanCode(content, file.language, file.path);
+    const result = scanCodeWithRules(content, file.language, file.path, rules);
     allFindings.push(...result.findings);
     linesScanned += result.linesScanned;
   }

@@ -15,11 +15,17 @@ export default async function AdminPage() {
   if (!isAdmin) redirect("/dashboard");
 
   const superAdmin = isSuperAdmin(session.user.email);
+  const orgId = (session.user as { orgId?: string | null }).orgId ?? null;
+
+  // Super admins see all orgs; regular admins see only their own org
+  const orgFilter = superAdmin ? {} : { orgId: orgId ?? undefined };
+  const userOrgFilter = superAdmin ? {} : { orgId: orgId ?? undefined };
 
   const [users, totalScans, totalFindings, criticalOpen, recentScans] = await Promise.all([
     prisma.user.findMany({
+      where: userOrgFilter,
       orderBy: { createdAt: "desc" },
-      take: 500, // safety valve — prevents OOM on large user tables
+      take: 500,
       select: {
         id: true,
         email: true,
@@ -29,10 +35,11 @@ export default async function AdminPage() {
         exceptions: { select: { feature: true, note: true } },
       },
     }),
-    prisma.scan.count(),
-    prisma.finding.count({ where: { falsePositive: false } }),
-    prisma.finding.count({ where: { severity: "CRITICAL", fixed: false, falsePositive: false } }),
+    prisma.scan.count({ where: orgFilter }),
+    prisma.finding.count({ where: { falsePositive: false, scan: orgFilter } }),
+    prisma.finding.count({ where: { severity: "CRITICAL", fixed: false, falsePositive: false, scan: orgFilter } }),
     prisma.scan.findMany({
+      where: orgFilter,
       orderBy: { createdAt: "desc" },
       take: 5,
       include: { summary: true, createdBy: { select: { email: true } } },

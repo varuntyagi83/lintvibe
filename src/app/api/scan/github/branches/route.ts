@@ -16,6 +16,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing owner or repo" }, { status: 400 });
   }
 
+  const GITHUB_OWNER_RE = /^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,37}[a-zA-Z0-9])?$/;
+  const GITHUB_REPO_RE = /^[a-zA-Z0-9\-_.]{1,100}$/;
+  if (!GITHUB_OWNER_RE.test(owner) || !GITHUB_REPO_RE.test(repo)) {
+    return NextResponse.json({ error: "Invalid GitHub owner or repository name" }, { status: 400 });
+  }
+
   const token = await getGitHubToken(session.user.id);
   if (!token) {
     return NextResponse.json({ error: "GitHub not connected" }, { status: 400 });

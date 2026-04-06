@@ -23,9 +23,17 @@ export async function PATCH(
   }
 
   // Protect the super admin — nobody can change their role
-  const target = await prisma.user.findUnique({ where: { id }, select: { email: true } });
+  const target = await prisma.user.findUnique({ where: { id }, select: { email: true, orgId: true } });
   if (target?.email === SUPER_ADMIN_EMAIL) {
     return NextResponse.json({ error: "Cannot modify super admin role" }, { status: 403 });
+  }
+
+  // Non-super-admins can only manage users within their own org
+  if (!isSuperAdmin(session.user.email)) {
+    const callerOrgId = (session.user as { orgId?: string | null }).orgId;
+    if (!callerOrgId || target?.orgId !== callerOrgId) {
+      return NextResponse.json({ error: "Cannot manage users outside your organization" }, { status: 403 });
+    }
   }
 
   // Only super admin can grant ADMIN role to others

@@ -13,7 +13,7 @@ const PRICING_TIERS = [
     popular: false,
     features: [
       "10 scans/month",
-      "Up to 50 files per scan",
+      "Up to 500 files per scan",
       "41 detection rules",
       "PDF export",
       "3 AI explanations/month",

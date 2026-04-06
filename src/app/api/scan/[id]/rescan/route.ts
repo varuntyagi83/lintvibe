@@ -47,6 +47,23 @@ export async function POST(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  // Enforce free tier monthly scan quota
+  const tier = session.user.tier ?? "FREE";
+  if (tier !== "PRO") {
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthlyCount = await prisma.scan.count({
+      where: { createdById: session.user.id, createdAt: { gte: monthStart } },
+    });
+    if (monthlyCount >= 10) {
+      return NextResponse.json(
+        { error: "Free tier limit reached (10 scans/month). Upgrade to Pro for unlimited scans." },
+        { status: 402 }
+      );
+    }
+  }
+
   if (scan.sourceType !== "GITHUB" || !scan.sourceRef) {
     return NextResponse.json(
       { error: "Re-scan is only available for GitHub scans" },

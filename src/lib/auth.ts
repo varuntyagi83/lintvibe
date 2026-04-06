@@ -31,26 +31,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id;
       }
       // Always re-fetch from DB so role/tier changes take effect immediately
+      // Single query with org include to avoid N+1
       if (token.id) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id as string },
-          select: { role: true, orgId: true },
+          select: {
+            role: true,
+            orgId: true,
+            organization: { select: { subscriptionTier: true, stripeCurrentPeriodEnd: true } },
+          },
         });
         token.role = dbUser?.role;
         token.orgId = dbUser?.orgId;
 
-        // Fetch org subscription tier separately to avoid relation type issues
-        let tier: string = "FREE";
-        if (dbUser?.orgId) {
-          const org = await prisma.organization.findUnique({
-            where: { id: dbUser.orgId },
-            select: { subscriptionTier: true, stripeCurrentPeriodEnd: true },
-          });
-          const periodEnd = org?.stripeCurrentPeriodEnd ?? null;
-          const isActive = periodEnd ? periodEnd.getTime() > Date.now() : false;
-          tier = isActive ? (org?.subscriptionTier ?? "FREE") : "FREE";
-        }
-        token.tier = tier;
+        const org = dbUser?.organization ?? null;
+        const periodEnd = org?.stripeCurrentPeriodEnd ?? null;
+        const isActive = periodEnd ? periodEnd.getTime() > Date.now() : false;
+        token.tier = isActive ? (org?.subscriptionTier ?? "FREE") : "FREE";
       }
       return token;
     },

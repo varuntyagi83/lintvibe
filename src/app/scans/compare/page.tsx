@@ -39,6 +39,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
   const allScans = await prisma.scan.findMany({
     where: { createdById: userId, status: "COMPLETE" },
     orderBy: { createdAt: "desc" },
+    take: 100,
     select: { id: true, name: true, createdAt: true, summary: { select: { grade: true, riskScore: true } } },
   });
 

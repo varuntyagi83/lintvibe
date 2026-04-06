@@ -15,6 +15,9 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (session.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Only org admins can manage billing" }, { status: 403 });
+  }
 
   const { allowed } = checkRateLimit(
     session.user.id,

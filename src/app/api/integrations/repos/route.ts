@@ -79,7 +79,15 @@ export async function DELETE(req: Request) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { owner, repo } = await req.json() as { owner: string; repo: string };
+  let owner: string, repo: string;
+  try {
+    const body = await req.json();
+    if (typeof body?.owner !== "string" || typeof body?.repo !== "string") throw new Error();
+    owner = body.owner;
+    repo = body.repo;
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
 
   const existing = await prisma.connectedRepo.findUnique({
     where: { owner_repo: { owner, repo } },

@@ -153,6 +153,8 @@ export async function POST(
     );
 
     await prisma.$transaction([
+      // Delete sentinel before saving real findings
+      prisma.finding.deleteMany({ where: { scanId, filePath: "__deep_scan_sentinel__" } }),
       prisma.finding.createMany({
         data: deepFindings.map((f) => ({
           scanId,

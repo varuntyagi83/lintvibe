@@ -9,7 +9,7 @@ import AppHeader from "@/components/AppHeader";
 const AI_TOOLS = ["Copilot", "Cursor", "Lovable", "Bolt", "Claude Code"];
 
 const STATS = [
-  { value: "26", label: "detection rules" },
+  { value: "41", label: "detection rules" },
   { value: "6", label: "vulnerability categories" },
   { value: "5", label: "AI tools covered" },
 ];
