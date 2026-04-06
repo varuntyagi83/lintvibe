@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { stripe, STRIPE_PRICES, type PlanKey } from "@/lib/stripe";
+import { getStripe, STRIPE_PRICES, type PlanKey } from "@/lib/stripe";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { bypassesRateLimit } from "@/lib/super-admin";
 
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
   // Reuse existing Stripe customer or create new one
   let customerId = org?.stripeCustomerId ?? null;
   if (!customerId) {
-    const customer = await stripe.customers.create({
+    const customer = await getStripe().customers.create({
       email: user.email ?? undefined,
       name: user.name ?? undefined,
       metadata: { orgId: user.orgId, userId: session.user.id },
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const checkoutSession = await stripe.checkout.sessions.create({
+  const checkoutSession = await getStripe().checkout.sessions.create({
     customer: customerId,
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],

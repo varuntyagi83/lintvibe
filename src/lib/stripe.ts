@@ -1,10 +1,15 @@
 import Stripe from "stripe";
 
-// Server-only — never import this in client components
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-03-31.basil",
-  typescript: true,
-});
+// Lazily instantiated — avoids constructor throw during `next build` when env vars aren't set
+let _stripe: Stripe | undefined;
+export function getStripe(): Stripe {
+  if (!_stripe) {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key) throw new Error("[stripe] STRIPE_SECRET_KEY is not configured");
+    _stripe = new Stripe(key, { apiVersion: "2025-03-31.basil", typescript: true });
+  }
+  return _stripe;
+}
 
 // Canonical price IDs — never accept these from the client
 export const STRIPE_PRICES = {

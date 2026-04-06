@@ -1,11 +1,20 @@
 import { Resend } from "resend";
 
-export const resend = new Resend(process.env.RESEND_API_KEY!);
+// Lazily instantiated — avoids constructor throw during `next build` when env vars aren't set
+let _resend: Resend | undefined;
+function getResend(): Resend {
+  if (!_resend) {
+    const key = process.env.RESEND_API_KEY;
+    if (!key) throw new Error("[resend] RESEND_API_KEY is not configured");
+    _resend = new Resend(key);
+  }
+  return _resend;
+}
 
-const FROM = process.env.EMAIL_FROM ?? "VibeScan <noreply@vibescan.app>";
+const FROM = process.env.EMAIL_FROM ?? "VibeScan <noreply@corevisionailabs.com>";
 
 export async function sendMagicLink(to: string, url: string): Promise<void> {
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: "Sign in to VibeScan",
@@ -46,7 +55,7 @@ export async function sendMagicLink(to: string, url: string): Promise<void> {
 
 export async function sendWelcome(to: string, name: string | null): Promise<void> {
   const firstName = name?.split(" ")[0] ?? "there";
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: "Welcome to VibeScan — your first scan awaits",
@@ -75,7 +84,7 @@ export async function sendWelcome(to: string, name: string | null): Promise<void
 }
 
 export async function sendSubscriptionConfirmation(to: string, plan: string, periodEnd: Date): Promise<void> {
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: "VibeScan Pro — subscription confirmed",

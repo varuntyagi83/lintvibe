@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { sendSubscriptionConfirmation } from "@/lib/resend";
 import type Stripe from "stripe";
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
+    event = getStripe().webhooks.constructEvent(body, sig, webhookSecret);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[stripe/webhook] Signature verification failed:", msg);
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
           break;
         }
 
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        const subscription = await getStripe().subscriptions.retrieve(subscriptionId);
         const priceId = subscription.items.data[0]?.price.id ?? null;
         const periodEnd = new Date((subscription as unknown as { current_period_end: number }).current_period_end * 1000);
 
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
         const subscriptionId = invoice.subscription;
         if (!subscriptionId) break;
 
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        const subscription = await getStripe().subscriptions.retrieve(subscriptionId);
         const periodEnd = new Date((subscription as unknown as { current_period_end: number }).current_period_end * 1000);
         const orgId = subscription.metadata?.orgId;
         if (!orgId) break;
