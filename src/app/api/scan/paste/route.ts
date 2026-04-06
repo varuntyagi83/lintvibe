@@ -5,7 +5,7 @@ import { scanCode } from "@/lib/engine";
 import type { Language } from "@/lib/engine";
 import { z } from "zod";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { bypassesRateLimit } from "@/lib/super-admin";
+import { bypassesRateLimit, hasUnlimitedScans } from "@/lib/super-admin";
 
 const RequestSchema = z.object({
   code: z.string().min(1).max(500_000),
@@ -17,6 +17,9 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (session.user.role === "VIEWER") {
+    return NextResponse.json({ error: "Viewers cannot create scans" }, { status: 403 });
   }
 
   const { allowed, retryAfter } = checkRateLimit(session.user.id, 10, 60 * 60 * 1000, bypassesRateLimit(session.user.email));
@@ -43,19 +46,26 @@ export async function POST(req: NextRequest) {
   const orgId = (session.user as { orgId?: string }).orgId ?? null;
 
   // Enforce free tier monthly scan quota (10 scans/month)
-  const tier = (session.user as { tier?: string }).tier ?? "FREE";
+  const tier = session.user.tier ?? "FREE";
   if (tier !== "PRO") {
-    const monthStart = new Date();
-    monthStart.setDate(1);
-    monthStart.setHours(0, 0, 0, 0);
-    const monthlyCount = await prisma.scan.count({
-      where: { createdById: session.user.id, createdAt: { gte: monthStart } },
+    const exceptions = await prisma.userException.findMany({
+      where: { userId: session.user.id },
+      select: { feature: true },
     });
-    if (monthlyCount >= 10) {
-      return NextResponse.json(
-        { error: "Free tier limit reached (10 scans/month). Upgrade to Pro for unlimited scans." },
-        { status: 402 }
-      );
+    const exceptionFeatures = exceptions.map((e) => e.feature);
+    if (!hasUnlimitedScans(session.user.email, exceptionFeatures)) {
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+      const monthlyCount = await prisma.scan.count({
+        where: { createdById: session.user.id, createdAt: { gte: monthStart } },
+      });
+      if (monthlyCount >= 10) {
+        return NextResponse.json(
+          { error: "Free tier limit reached (10 scans/month). Upgrade to Pro for unlimited scans." },
+          { status: 402 }
+        );
+      }
     }
   }
 

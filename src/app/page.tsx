@@ -136,7 +136,7 @@ export default function LandingPage() {
       <section className="border-t border-zinc-800 px-6 py-16">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-center text-2xl font-bold mb-2">
-            25+ detection rules, tuned for AI-generated code
+            41 detection rules, tuned for AI-generated code
           </h2>
           <p className="text-center text-zinc-400 text-sm mb-10">
             Real patterns we&apos;ve seen in production apps built with AI tools
@@ -172,7 +172,7 @@ export default function LandingPage() {
               {
                 step: "2",
                 title: "Deep scan",
-                desc: "AST parsing + regex across 25+ AI-specific vulnerability rules",
+                desc: "AST parsing + regex across 41 AI-specific vulnerability rules",
               },
               {
                 step: "3",

@@ -25,6 +25,7 @@ export async function GET(
   const findings = await prisma.finding.findMany({
     where: { scanId },
     orderBy: [{ severity: "asc" }, { lineNumber: "asc" }],
+    take: 1000,
   });
 
   return NextResponse.json({ findings });

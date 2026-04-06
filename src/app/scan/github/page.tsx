@@ -46,7 +46,7 @@ export default async function GitHubScanPage() {
         <div className="mb-8">
           <h1 className="text-2xl font-bold mb-1">GitHub repo scanner</h1>
           <p className="text-zinc-400 text-sm">
-            Connect a repo and branch — we download, extract, and scan every JS, TS, and Python file against 26 AI-specific vulnerability rules.
+            Connect a repo and branch — we download, extract, and scan every JS, TS, and Python file against 41 AI-specific vulnerability rules.
           </p>
         </div>
 

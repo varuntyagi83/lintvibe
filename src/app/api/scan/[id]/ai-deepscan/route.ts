@@ -55,12 +55,12 @@ export async function POST(
     );
   }
 
-  // Super admin, ADMIN role, or users with explicit deep_scan exception
-  const userRole = (session.user as { role?: string }).role;
+  // Super admin, Pro tier, or users with explicit deep_scan exception
+  const userTier = session.user.tier ?? "FREE";
   const userExceptions = await prisma.userException
     .findMany({ where: { userId: session.user.id }, select: { feature: true } })
     .then((e) => e.map((x) => x.feature));
-  if (!hasDeepScanAccess(session.user.email, userRole, userExceptions)) {
+  if (!hasDeepScanAccess(session.user.email, userTier, userExceptions)) {
     return NextResponse.json(
       { error: "AI Deep Scan is a Pro feature. Upgrade to unlock." },
       { status: 403 }

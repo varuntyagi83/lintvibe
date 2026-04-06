@@ -440,8 +440,9 @@ function CoverPage({ scan }: { scan: ScanReportProps["scan"] }) {
   const grade = summary?.grade ?? "?";
   const riskScore = Math.round(summary?.riskScore ?? 0);
   const gradeColor = GRADE_COLORS[grade] ?? "#71717a";
+  // Higher risk score = more danger: red ≥ 60, yellow ≥ 30, green below 30
   const scoreColor =
-    riskScore >= 80 ? "#22c55e" : riskScore >= 60 ? "#eab308" : "#ef4444";
+    riskScore >= 60 ? "#ef4444" : riskScore >= 30 ? "#eab308" : "#22c55e";
 
   return (
     <Page size="A4" style={s.page}>

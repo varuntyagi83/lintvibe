@@ -35,7 +35,7 @@ export default async function UploadScanPage() {
         <div className="mb-8">
           <h1 className="text-2xl font-bold mb-1">Upload scanner</h1>
           <p className="text-zinc-400 text-sm">
-            Zip your project and upload it — we scan every JS, TS, and Python file against 26 AI-specific vulnerability rules.
+            Zip your project and upload it — we scan every JS, TS, and Python file against 41 AI-specific vulnerability rules.
           </p>
         </div>
 

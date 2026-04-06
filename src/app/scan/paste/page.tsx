@@ -35,7 +35,7 @@ export default async function PasteScanPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold mb-1">Paste scanner</h1>
           <p className="text-zinc-400 text-sm">
-            Paste any JS, TS, or Python code — we&apos;ll scan it against 26 AI-specific vulnerability rules instantly.
+            Paste any JS, TS, or Python code — we&apos;ll scan it against 41 AI-specific vulnerability rules instantly.
           </p>
         </div>
 

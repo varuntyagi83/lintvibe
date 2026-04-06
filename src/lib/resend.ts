@@ -62,7 +62,7 @@ export async function sendWelcome(to: string, name: string | null): Promise<void
     <h1 style="margin:0 0 8px;font-size:20px;font-weight:700">Welcome, ${firstName}! 🎉</h1>
     <p style="color:#a1a1aa;font-size:14px;line-height:1.6;margin:0 0 20px">
       Your account is ready. VibeScan scans your AI-generated code for the exact vulnerability patterns
-      that Copilot, Cursor, Lovable, and Bolt introduce — IDOR, missing auth, mass assignment, and 38+ more rules.
+      that Copilot, Cursor, Lovable, and Bolt introduce — 41 detection rules covering IDOR, auth bypass, injection, secrets exposure, and more.
     </p>
     <p style="color:#a1a1aa;font-size:14px;margin:0 0 24px"><strong style="color:#fafafa">Free plan includes:</strong> 10 scans/month · 500 files per scan · 3 AI explanations</p>
     <a href="${process.env.NEXTAUTH_URL}/onboarding" style="display:block;background:#dc2626;color:#fafafa;text-decoration:none;text-align:center;padding:14px;border-radius:8px;font-weight:600;font-size:15px">

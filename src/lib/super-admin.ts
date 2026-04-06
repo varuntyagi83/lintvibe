@@ -39,15 +39,15 @@ export function hasUnlimitedScans(
   return isSuperAdmin(email) || exceptions.includes("unlimited_scans");
 }
 
-/** Returns true if the user can use AI Deep Scan regardless of Stripe tier. */
+/** Returns true if the user can use AI Deep Scan. Requires Pro tier or explicit exception. */
 export function hasDeepScanAccess(
   email: string | null | undefined,
-  role: string | null | undefined,
+  tier: string | null | undefined,
   exceptions: string[]
 ): boolean {
   return (
     isSuperAdmin(email) ||
-    role === "ADMIN" ||
+    tier === "PRO" ||
     exceptions.includes("deep_scan")
   );
 }

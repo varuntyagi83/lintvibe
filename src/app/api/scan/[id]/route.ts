@@ -10,6 +10,9 @@ export async function DELETE(
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (session.user.role === "VIEWER") {
+    return NextResponse.json({ error: "Viewers cannot delete scans" }, { status: 403 });
+  }
 
   const { id } = await params;
 

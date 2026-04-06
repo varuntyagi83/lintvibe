@@ -115,7 +115,7 @@ model Scan {
   linesScanned   Int           @default(0)
   scanDurationMs Int?
   createdById    String?
-  createdBy      User?         @relation(fields: [createdById], references: [id])
+  createdBy      User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
   findings       Finding[]
   summary        ScanSummary?
   createdAt      DateTime      @default(now())

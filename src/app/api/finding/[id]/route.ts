@@ -10,6 +10,9 @@ export async function PATCH(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (session.user.role === "VIEWER") {
+    return NextResponse.json({ error: "Viewers cannot modify findings" }, { status: 403 });
+  }
 
   const { id } = await params;
   let body: { falsePositive?: boolean; fixed?: boolean };
